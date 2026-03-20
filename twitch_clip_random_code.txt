@@ -1,0 +1,74 @@
+using System;
+using System.Net.Http;
+using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+
+public class CPHInline
+{
+    public bool Execute()
+    {
+        CPH.TryGetArg("clientId", out string clientId);
+        CPH.TryGetArg("token", out string token);
+        CPH.TryGetArg("targetUser", out string targetUser);
+        CPH.TryGetArg("muteVOD", out bool muteVOD);
+
+        // Initialize the argument as true (defaulting to "yes, there are no clips")
+        CPH.SetArgument("noclipsforuser", true);
+
+        try
+        {
+            using (var client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.Add("Client-ID", clientId);
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+                var userResponse = client.GetStringAsync("https://api.twitch.tv/helix/users?login=" + targetUser).GetAwaiter().GetResult();
+                var userId = JObject.Parse(userResponse)["data"]?[0]?["id"]?.ToString();
+
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    var clipsResponse = client.GetStringAsync("https://api.twitch.tv/helix/clips?broadcaster_id=" + userId + "&first=50").GetAwaiter().GetResult();
+                    var clips = (JArray)JObject.Parse(clipsResponse)["data"];
+
+                    if (clips != null && clips.Count > 0)
+                    {
+                        // Clips found! Set the argument to false
+                        CPH.SetArgument("noclipsforuser", false);
+
+                        var rand = new Random();
+                        var selectedClip = (JObject)clips[rand.Next(clips.Count)];
+                        
+                        string clipId = selectedClip["id"].ToString();
+                        double durationSeconds = (double)selectedClip["duration"];
+                        
+                        // Convert to MS and add 3s buffer
+                        double totalMs = (durationSeconds * 1000) + 3000;
+                        string url = "https://clips.twitch.tv/embed?clip=" + clipId + "&parent=localhost&autoplay=true&muted=" + muteVOD.ToString().ToLower();
+
+                        // Export the playback args
+                        CPH.SetArgument("clipUrl", url);
+                        CPH.SetArgument("clipDuration", totalMs);
+
+                        CPH.LogInfo("[Grabber] Exporting: " + clipId + " | Total Wait: " + totalMs + "ms");
+                        return true;
+                    }
+                    else
+                    {
+                        CPH.LogInfo("[Grabber] No clips found for user: " + targetUser);
+                    }
+                }
+                else
+                {
+                    CPH.LogError("[Grabber] Could not find User ID for: " + targetUser);
+                }
+            }
+        }
+        catch (Exception ex) 
+        { 
+            CPH.LogError("[Grabber] Exception: " + ex.Message); 
+        }
+
+        // If we reached here, no clips were successfully processed
+        return true; 
+    }
+}

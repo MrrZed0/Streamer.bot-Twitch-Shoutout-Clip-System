@@ -1,0 +1,21 @@
+using System;
+
+public class CPHInline
+{
+    public bool Execute()
+    {
+        // Import rawInput safely
+        string rawInput = args.ContainsKey("rawInput") ? args["rawInput"].ToString() : "";
+
+        // Check if it starts with '@' and remove it
+        if (rawInput.StartsWith("@"))
+        {
+            rawInput = rawInput.Substring(1); // Remove first character '@'
+        }
+
+        // Set the cleaned value back to the same argument
+        CPH.SetArgument("rawInput", rawInput);
+
+        return true;
+    }
+}
