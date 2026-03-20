@@ -121,7 +121,7 @@ You now have a fully automated shoutout system that:
 
 ## Script 1 — Remove `@` From Username
 
-`bash
+
 using System;
 
 public class CPHInline
@@ -143,7 +143,7 @@ public class CPHInline
 
 
 ## Script 2 — Fetch Random Twitch Clip
-``bash
+
 using System;
 using System.Net.Http;
 using Newtonsoft.Json.Linq;
